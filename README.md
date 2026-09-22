@@ -1,6 +1,12 @@
 # tricyp — ESM2 Cysteine State Predictor
 
-Predicts whether each cysteine in a protein is **metal-binding**, **disulfide-bonded**, or **reduced/negative** using a 5-model ensemble classifier on frozen ESM2-650M embeddings.
+Predicts whether each cysteine in a protein is **metal-binding**, **disulfide-bonded**, or a
+**free thiol** using a 5-model ensemble classifier on frozen ESM2-650M embeddings.
+
+> **Weights updated 2026-09-21.** `weights/` now holds the September 2026 ensemble, trained with
+> weighted cross-entropy alone — without focal loss and without balanced sampling. Use the
+> operating thresholds **p(Dis) >= 0.696** and **p(Met) >= 0.788** (see *Interpreting the output*).
+> The previous weights used thresholds 0.742 / 0.972; the two are not interchangeable.
 
 > Previously published as `rschaeff/cys3state`; now maintained at
 > [`conglab2020/tricyp`](https://github.com/conglab2020/tricyp).
@@ -59,9 +65,26 @@ sp|P80882|RUBR_CLOSR   54         0.0014      0.0142      0.9844
 sp|P80882|RUBR_CLOSR   68         0.0024      0.1264      0.8711
 ```
 
-- **Neg_prob**: Probability of reduced/negative state
+- **Neg_prob**: Probability of the free-thiol state
 - **Dis_prob**: Probability of disulfide bond
 - **Met_prob**: Probability of metal binding
+
+The three probabilities are softmax outputs averaged across the ensemble and sum to 1.
+
+### Interpreting the output
+
+`predict.py` emits probabilities only and applies no threshold, so you choose the operating point.
+The published catalog uses the F1 optima of this ensemble:
+
+| call | rule |
+|------|------|
+| Disulfide | `Dis_prob >= 0.696` |
+| Metal-binding | `Met_prob >= 0.788` (and not already called disulfide) |
+| Free thiol | otherwise |
+
+These thresholds belong to **these** weights. The previous release's 0.742 / 0.972 were the F1
+optima of a differently-trained ensemble; applying them here will substantially under-call the
+metal class, and applying 0.696 / 0.788 to the old weights will over-call it.
 
 ### Options
 
@@ -73,7 +96,14 @@ sp|P80882|RUBR_CLOSR   68         0.0024      0.1264      0.8711
 
 ## Training
 
-Training data (labeled cysteines and sequences) is available at [Zenodo DOI: TODO].
+Training data (labeled cysteines and sequences) is available at
+[doi:10.5281/zenodo.20072069](https://doi.org/10.5281/zenodo.20072069), which also carries the
+full ECOD catalog, the model weights and the benchmark set.
+
+**The defaults reproduce the published ensemble.** `--focal-gamma` now defaults to `0.0`, at which
+the focal term vanishes and the criterion is weighted cross-entropy with inverse-frequency class
+weights; the data loader shuffles without balanced sampling. That is exactly the recipe behind the
+weights in `weights/`.
 
 ```bash
 python train.py labels.tsv sequences.fasta -o output_dir/
@@ -109,7 +139,7 @@ to use them with `predict.py`.
 | `--hidden-dim` | 128 | Hidden layer size |
 | `--dropout` | 0.2 | Dropout rate |
 | `--batch-size` | 64 | Training batch size |
-| `--focal-gamma` | 2.0 | Focal loss gamma |
+| `--focal-gamma` | 0.0 | Focal loss gamma. `0.0` = weighted cross-entropy (published recipe); `>0` reintroduces focal loss |
 | `--patience` | 10 | Early stopping patience |
 | `--seed` | 42 | Random seed |
 | `--device` | auto | `cpu`, `cuda`, `cuda:0`, etc. |

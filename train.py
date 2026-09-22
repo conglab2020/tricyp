@@ -3,7 +3,8 @@
 Train the tricyp classifier from labeled cysteine data.
 
 Takes a labels TSV and a FASTA file, extracts ESM2-650M embeddings,
-and trains a K-fold ensemble of 2-layer MLP classifiers using focal loss.
+and trains a K-fold ensemble of 2-layer MLP classifiers using weighted
+cross-entropy (the default; --focal-gamma > 0 reintroduces focal loss).
 
 Usage:
   python train.py labels.tsv sequences.fasta -o output_dir/
@@ -463,8 +464,11 @@ def main():
                         help="Dropout rate (default: 0.2)")
     parser.add_argument("--batch-size", type=int, default=64,
                         help="Training batch size (default: 64)")
-    parser.add_argument("--focal-gamma", type=float, default=2.0,
-                        help="Focal loss gamma (default: 2.0)")
+    parser.add_argument("--focal-gamma", type=float, default=0.0,
+                        help="Focal loss gamma (default: 0.0). At gamma=0 the focal term "
+                             "vanishes and the criterion is weighted cross-entropy with "
+                             "inverse-frequency class weights, which is how the published "
+                             "TriCyP ensemble was trained. Set >0 to reintroduce focal loss.")
     parser.add_argument("--patience", type=int, default=10,
                         help="Early stopping patience (default: 10)")
     parser.add_argument("--seed", type=int, default=42,

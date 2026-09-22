@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Local pre-change backups (weights, scripts) — not for distribution.
+*.bak.pre-retrain
+weights_deployed_backup_*/
