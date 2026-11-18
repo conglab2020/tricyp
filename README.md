@@ -3,10 +3,11 @@
 Predicts whether each cysteine in a protein is **metal-binding**, **disulfide-bonded**, or a
 **free thiol** using a 5-model ensemble classifier on frozen ESM2-650M embeddings.
 
-> **Weights updated 2026-09-21.** `weights/` now holds the September 2026 ensemble, trained with
-> weighted cross-entropy alone — without focal loss and without balanced sampling. Use the
-> operating thresholds **p(Dis) >= 0.696** and **p(Met) >= 0.788** (see *Interpreting the output*).
-> The previous weights used thresholds 0.742 / 0.972; the two are not interchangeable.
+> **Weights updated 2026-11 (v3).** `weights/` now holds the v3 ensemble: five 1280 → 64 → 3
+> heads (82,307 parameters each; dropout 0.6, learning rate 0.00004, weighted cross-entropy),
+> trained on the corrected metal labels. Use the operating thresholds **p(Dis) >= 0.740** and
+> **p(Met) >= 0.625** (see *Interpreting the output*). Earlier releases used 0.696 / 0.788
+> (September 2026) and 0.742 / 0.972 (original); thresholds are not interchangeable between weights.
 
 > Previously published as `rschaeff/cys3state`; now maintained at
 > [`conglab2020/tricyp`](https://github.com/conglab2020/tricyp).
@@ -78,13 +79,13 @@ The published catalog uses the F1 optima of this ensemble:
 
 | call | rule |
 |------|------|
-| Disulfide | `Dis_prob >= 0.696` |
-| Metal-binding | `Met_prob >= 0.788` (and not already called disulfide) |
+| Disulfide | `Dis_prob` is the largest of the three **and** `Dis_prob >= 0.740` |
+| Metal-binding | `Met_prob` is the largest of the three **and** `Met_prob >= 0.625` |
 | Free thiol | otherwise |
 
-These thresholds belong to **these** weights. The previous release's 0.742 / 0.972 were the F1
-optima of a differently-trained ensemble; applying them here will substantially under-call the
-metal class, and applying 0.696 / 0.788 to the old weights will over-call it.
+These thresholds are the F1 optima of **these** weights on all held-out labelled cysteines.
+Thresholds from earlier releases (0.696 / 0.788, 0.742 / 0.972) belong to differently trained
+ensembles and should not be applied here.
 
 ### Options
 
@@ -136,8 +137,8 @@ to use them with `predict.py`.
 | `--folds` | 5 | Number of cross-validation folds |
 | `--epochs` | 50 | Max epochs per fold |
 | `--lr` | 0.00004 | Learning rate |
-| `--hidden-dim` | 128 | Hidden layer size |
-| `--dropout` | 0.2 | Dropout rate |
+| `--hidden-dim` | 64 | Hidden layer size |
+| `--dropout` | 0.6 | Dropout rate |
 | `--batch-size` | 64 | Training batch size |
 | `--focal-gamma` | 0.0 | Focal loss gamma. `0.0` = weighted cross-entropy (published recipe); `>0` reintroduces focal loss |
 | `--patience` | 10 | Early stopping patience |
@@ -149,7 +150,7 @@ to use them with `predict.py`.
 
 1. Sequences are parsed from FASTA input
 2. ESM2-650M extracts per-residue embeddings (1280-dim, frozen)
-3. Embeddings at cysteine positions are fed to a 5-model ensemble of 2-layer MLPs (1280 → 128 → 3)
+3. Embeddings at cysteine positions are fed to a 5-model ensemble of 2-layer MLPs (1280 → 64 → 3)
 4. Softmax probabilities are averaged across the ensemble
 5. Results are written incrementally (streaming — memory bounded by ESM2 forward pass, not dataset size)
 
