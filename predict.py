@@ -30,8 +30,8 @@ import esm
 # ---------------------------------------------------------------------------
 
 class FunctionalSitePredictor(nn.Module):
-    def __init__(self, embedding_dim=1280, hidden_dim=128,
-                 num_classes=3, dropout_rate=0.2):
+    def __init__(self, embedding_dim=1280, hidden_dim=64,
+                 num_classes=3, dropout_rate=0.6):
         super().__init__()
         self.fc1 = nn.Linear(embedding_dim, hidden_dim)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
@@ -205,8 +205,10 @@ def main():
     print("Loading classifier ensemble...", file=sys.stderr)
     ensemble = []
     for wf in weight_files:
-        m = FunctionalSitePredictor()
-        m.load_state_dict(torch.load(wf, map_location=device, weights_only=True))
+        state = torch.load(wf, map_location=device, weights_only=True)
+        # Hidden size is read from the weights, so any released ensemble loads.
+        m = FunctionalSitePredictor(hidden_dim=state["fc1.weight"].shape[0])
+        m.load_state_dict(state)
         m.to(device)
         m.eval()
         ensemble.append(m)
