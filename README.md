@@ -98,7 +98,7 @@ ensembles and should not be applied here.
 ## Training
 
 Training data (labeled cysteines and sequences) is available at
-[doi:10.5281/zenodo.20072069](https://doi.org/10.5281/zenodo.20072069), which also carries the
+[doi:10.5281/zenodo.20072068](https://doi.org/10.5281/zenodo.20072068), which also carries the
 full ECOD catalog, the model weights and the benchmark set.
 
 **The defaults reproduce the published ensemble.** `--focal-gamma` now defaults to `0.0`, at which
